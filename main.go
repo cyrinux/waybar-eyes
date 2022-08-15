@@ -1,24 +1,56 @@
 // waybar-eyes based on face detection
+// waybar config:
+// ```
+//
+//	 "custom/eyes": {
+//	  "exec": "cat ~/.cache/waybar-eyes.json",
+//	  "interval": 5,
+//	  "return-type": "json",
+//	  "on-click": "pkill -f -SIGUSR1 waybar-eyes",
+//	},
+//
+// ```
 package main
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
-	"github.com/cyrinux/waybar-eyes/helpers"
 	"gocv.io/x/gocv"
 )
 
 // MaxEyes is the max number of eyes allowed
 // in the waybar applet
+const SleepTimeOnPresence = 30 * time.Second
+const SleepTimeOnAbsence = 15 * time.Second
+const NewEyeTimeRate = 1 * time.Minute
 const MaxEyes = 5
+const EYE = ""
+
+// Version give the software version
+var Version string
+
+// Eyes struct
+type Eyes struct {
+	Count int
+}
+
+// WaybarOutput struct
+type WaybarOutput struct {
+	Text    string `json:"text"`
+	Tooltip string `json:"tooltip"`
+	Class   string `json:"class"`
+	Count   int    `json:"count"`
+}
 
 func main() {
-	if len(os.Args) < 1 {
+	if len(os.Args) > 3 {
 		fmt.Println("How to run:\n\tfacedetect [camera ID] [classifier XML file]")
 		return
 	}
@@ -40,53 +72,47 @@ func main() {
 	}
 
 	// init waybar output
-	var wOutput, previousWOutput helpers.WaybarOutput
+	var wOutput, previousWOutput WaybarOutput
 
 	// main loop here
-	count := 0
-	eye := ""
+	var eyes Eyes
+	go eyes.signalHandler(debug)
 
+	lastEyeTS := time.Now()
 	for {
 		// detect face
 		detected := detectFace(deviceID, xmlFile, debug)
 		// increase or decrease eye counter
 		// based on face detected or not
-		if detected && count < MaxEyes {
-			count++
-		} else if count > 1 {
-			count--
+		if detected && (time.Since(lastEyeTS)) > NewEyeTimeRate && eyes.Count < MaxEyes {
+			eyes.Count++
+			lastEyeTS = time.Now()
+		} else if eyes.Count > 0 {
+			eyes.Count--
 		}
 
-		// print the eyes if eyes counter
-		// positive
-		wOutput.Class = "normal"
-		if count == MaxEyes {
-			wOutput.Class = "critical"
-		}
-		wOutput.Text = strings.Repeat(eye, count)
-		wOutput.Tooltip = ""
-		wOutput.Count = count
-
-		// convert in JSON
-		jsonOutput, err := json.Marshal(wOutput)
-		if err != nil {
-			fmt.Println(err)
-		}
+		// get formatted output
+		output, _ := eyes.getOutput()
 
 		// Finally print the expected waybar JSON
+		if debug {
+			fmt.Println(string(output))
+		}
+
+		// write the output in JSON cache file
 		if wOutput != previousWOutput {
-			fmt.Println(string(jsonOutput))
+			eyes.writeJSON(output)
 		}
 		previousWOutput = wOutput
 
 		// sleep based on the eyes number
 		// we want to quickly decrease the eyes
 		// number if absence detected
-		if !detected && count > 0 {
-			time.Sleep(5 * time.Second)
+		if !detected && eyes.Count > 0 {
+			time.Sleep(SleepTimeOnAbsence)
 		} else {
 			// and the default sleep time
-			time.Sleep(15 * time.Second)
+			time.Sleep(SleepTimeOnPresence)
 		}
 	}
 }
@@ -123,12 +149,61 @@ func detectFace(deviceID int, xmlFile string, debug bool) bool {
 
 	// detect faces
 	rects := classifier.DetectMultiScale(img)
-	if len(rects) > 0 {
-		if debug {
-			fmt.Printf("found %d faces\n", len(rects))
-		}
-		return true
+	return len(rects) > 0
+
+}
+
+func (eyes *Eyes) writeJSON(output []byte) error {
+	f, err := os.Create(os.Getenv("XDG_CACHE_HOME") + "/waybar-eyes.json")
+	if err != nil {
+		return err
+	}
+	f.WriteString(string(output))
+	f.Close()
+
+	return nil
+}
+
+func (eyes *Eyes) getOutput() ([]byte, error) {
+	var wOutput WaybarOutput
+
+	wOutput.Class = "normal"
+	if eyes.Count == MaxEyes {
+		wOutput.Class = "critical"
+	}
+	wOutput.Text = strings.Repeat(EYE, eyes.Count)
+	wOutput.Tooltip = ""
+	wOutput.Count = eyes.Count
+
+	jsonOutput, err := json.Marshal(wOutput)
+	if err != nil {
+		return nil, err
 	}
 
-	return false
+	return jsonOutput, nil
+}
+
+func (eyes *Eyes) reset() {
+	eyes.Count = 0
+}
+
+func (eyes *Eyes) signalHandler(debug bool) {
+	// channel to trap signal
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGUSR1, syscall.SIGTERM, os.Interrupt)
+
+	for {
+		sig := <-sigs
+		if sig == syscall.SIGUSR1 {
+			eyes.reset()
+			output, _ := eyes.getOutput()
+			if debug {
+				fmt.Println(string(output))
+			}
+			eyes.writeJSON(output)
+		} else {
+			os.Exit(0)
+		}
+		time.Sleep(1 * time.Second)
+	}
 }
