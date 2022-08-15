@@ -2,14 +2,20 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/cyrinux/waybar-eyes/helpers"
 	"gocv.io/x/gocv"
 )
+
+// MaxEyes is the max number of eyes allowed
+// in the waybar applet
+const MaxEyes = 5
 
 func main() {
 	if len(os.Args) < 1 {
@@ -17,6 +23,7 @@ func main() {
 		return
 	}
 
+	// get debug mode
 	debug, _ := strconv.ParseBool(os.Getenv("DEBUG"))
 
 	// parse args
@@ -32,6 +39,9 @@ func main() {
 		xmlFile = os.Args[2]
 	}
 
+	// init waybar output
+	var wOutput, previousWOutput helpers.WaybarOutput
+
 	// main loop here
 	count := 0
 	eye := ""
@@ -41,19 +51,33 @@ func main() {
 		detected := detectFace(deviceID, xmlFile, debug)
 		// increase or decrease eye counter
 		// based on face detected or not
-		if detected {
-			if count < 5 {
-				count++
-			}
-		} else {
+		if detected && count < MaxEyes {
+			count++
+		} else if count > 1 {
 			count--
 		}
 
 		// print the eyes if eyes counter
 		// positive
-		if count > 0 {
-			fmt.Println(strings.Repeat(eye, count))
+		wOutput.Class = "normal"
+		if count == MaxEyes {
+			wOutput.Class = "critical"
 		}
+		wOutput.Text = strings.Repeat(eye, count)
+		wOutput.Tooltip = ""
+		wOutput.Count = count
+
+		// convert in JSON
+		jsonOutput, err := json.Marshal(wOutput)
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		// Finally print the expected waybar JSON
+		if wOutput != previousWOutput {
+			fmt.Println(string(jsonOutput))
+		}
+		previousWOutput = wOutput
 
 		// sleep based on the eyes number
 		// we want to quickly decrease the eyes
