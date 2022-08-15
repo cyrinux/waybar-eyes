@@ -1,11 +1,12 @@
+// waybar-eyes based on face detection
 package main
 
 import (
 	"fmt"
-	"image"
-	"image/color"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"gocv.io/x/gocv"
 )
@@ -19,73 +20,91 @@ func main() {
 	debug, _ := strconv.ParseBool(os.Getenv("DEBUG"))
 
 	// parse args
+	// deviceID is my infrared built-in webcam
 	deviceID := 2
 	if len(os.Args) == 2 {
 		deviceID, _ = strconv.Atoi(os.Args[1])
 	}
+
+	// face model is the gocv default model example
 	xmlFile := "haarcascade_frontalface_default.xml"
 	if len(os.Args) == 3 {
 		xmlFile = os.Args[2]
 	}
 
+	// main loop here
+	count := 0
+	eye := ""
+
+	for {
+		// detect face
+		detected := detectFace(deviceID, xmlFile, debug)
+		// increase or decrease eye counter
+		// based on face detected or not
+		if detected {
+			if count < 5 {
+				count++
+			}
+		} else {
+			count--
+		}
+
+		// print the eyes if eyes counter
+		// positive
+		if count > 0 {
+			fmt.Println(strings.Repeat(eye, count))
+		}
+
+		// sleep based on the eyes number
+		// we want to quickly decrease the eyes
+		// number if absence detected
+		if !detected && count > 0 {
+			time.Sleep(5 * time.Second)
+		} else {
+			// and the default sleep time
+			time.Sleep(15 * time.Second)
+		}
+	}
+}
+
+func detectFace(deviceID int, xmlFile string, debug bool) bool {
 	// open webcam
 	webcam, err := gocv.VideoCaptureDevice(int(deviceID))
 	if err != nil {
 		fmt.Println(err)
-		return
+		return false
 	}
 	defer webcam.Close()
-
-	// open display window
-	window := gocv.NewWindow("Face Detect")
-	defer window.Close()
 
 	// prepare image matrix
 	img := gocv.NewMat()
 	defer img.Close()
 
-	// color for the rect when faces detected
-	blue := color.RGBA{0, 0, 255, 0}
-
 	// load classifier to recognize faces
 	classifier := gocv.NewCascadeClassifier()
 	defer classifier.Close()
-
 	if !classifier.Load(xmlFile) {
 		fmt.Printf("Error reading cascade file: %v\n", xmlFile)
-		return
+		return false
 	}
 
-	fmt.Printf("start reading camera device: %v\n", deviceID)
-	for {
-		if ok := webcam.Read(&img); !ok {
-			fmt.Printf("cannot read device %d\n", deviceID)
-			return
-		}
-		if img.Empty() {
-			continue
-		}
+	if ok := webcam.Read(&img); !ok {
+		fmt.Printf("cannot read device %d\n", deviceID)
+		return false
+	}
 
-		// detect faces
-		rects := classifier.DetectMultiScale(img)
-		fmt.Printf("found %d faces\n", len(rects))
+	if img.Empty() {
+		return false
+	}
 
-		// draw a rectangle around each face on the original image,
-		// along with text identifying as "Human"
+	// detect faces
+	rects := classifier.DetectMultiScale(img)
+	if len(rects) > 0 {
 		if debug {
-			for _, r := range rects {
-				gocv.Rectangle(&img, r, blue, 3)
-
-				size := gocv.GetTextSize("Human", gocv.FontHersheyPlain, 1.2, 2)
-				pt := image.Pt(r.Min.X+(r.Min.X/2)-(size.X/2), r.Min.Y-2)
-				gocv.PutText(&img, "Human", pt, gocv.FontHersheyPlain, 1.2, blue, 2)
-			}
-
-			// show the image in the window, and wait 1 millisecond
-			window.IMShow(img)
-			if window.WaitKey(1) >= 0 {
-				break
-			}
+			fmt.Printf("found %d faces\n", len(rects))
 		}
+		return true
 	}
+
+	return false
 }
