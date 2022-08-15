@@ -27,9 +27,9 @@ import (
 
 // MaxEyes is the max number of eyes allowed
 // in the waybar applet
-const SleepTimeOnPresence = 30 * time.Second
-const SleepTimeOnAbsence = 15 * time.Second
-const NewEyeTimeRate = 1 * time.Minute
+const SleepTimeOnPresence = 3 * time.Second
+const SleepTimeOnAbsence = 1 * time.Second
+const NewEyeTimeRate = 10 * time.Second
 const MaxEyes = 5
 const EYE = ""
 
@@ -38,7 +38,8 @@ var Version string
 
 // Eyes struct
 type Eyes struct {
-	Count int
+	WOuput WaybarOutput
+	Count  int
 }
 
 // WaybarOutput struct
@@ -54,6 +55,8 @@ func main() {
 		fmt.Println("How to run:\n\tfacedetect [camera ID] [classifier XML file]")
 		return
 	}
+
+	boot := true
 
 	// get debug mode
 	debug, _ := strconv.ParseBool(os.Getenv("DEBUG"))
@@ -72,7 +75,7 @@ func main() {
 	}
 
 	// init waybar output
-	var wOutput, previousWOutput WaybarOutput
+	var previousOutput WaybarOutput
 
 	// main loop here
 	var eyes Eyes
@@ -80,30 +83,41 @@ func main() {
 
 	lastEyeTS := time.Now()
 	for {
-		// detect face
-		detected := detectFace(deviceID, xmlFile, debug)
 		// increase or decrease eye counter
 		// based on face detected or not
-		if detected && (time.Since(lastEyeTS)) > NewEyeTimeRate && eyes.Count < MaxEyes {
-			eyes.Count++
-			lastEyeTS = time.Now()
-		} else if eyes.Count > 0 {
+		if boot {
+			boot = false
+		}
+
+		detected := detectFace5x(deviceID, xmlFile, debug)
+
+		if detected && eyes.Count < MaxEyes {
+			if time.Since(lastEyeTS) > NewEyeTimeRate {
+				eyes.Count++
+				lastEyeTS = time.Now()
+			}
+		} else if !detected && eyes.Count > 0 {
 			eyes.Count--
 		}
 
 		// get formatted output
-		output, _ := eyes.getOutput()
+		eyes.getOutput()
+
+		jsonOutput, err := json.Marshal(eyes.WOuput)
+		if err != nil {
+			continue
+		}
 
 		// Finally print the expected waybar JSON
 		if debug {
-			fmt.Println(string(output))
+			fmt.Println(string(jsonOutput))
 		}
 
 		// write the output in JSON cache file
-		if wOutput != previousWOutput {
-			eyes.writeJSON(output)
+		if eyes.WOuput != previousOutput {
+			eyes.writeJSON(jsonOutput)
 		}
-		previousWOutput = wOutput
+		previousOutput = eyes.WOuput
 
 		// sleep based on the eyes number
 		// we want to quickly decrease the eyes
@@ -144,13 +158,28 @@ func detectFace(deviceID int, xmlFile string, debug bool) bool {
 	}
 
 	if img.Empty() {
+		fmt.Printf("img empty %d\n", deviceID)
 		return false
 	}
 
 	// detect faces
 	rects := classifier.DetectMultiScale(img)
+	if debug {
+		fmt.Printf("found %d faces\n", len(rects))
+	}
+
 	return len(rects) > 0
 
+}
+
+func detectFace5x(deviceID int, xmlFile string, debug bool) bool {
+	for i := 1; i <= 5; i++ {
+		if detectFace(deviceID, xmlFile, debug) {
+			return true
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return false
 }
 
 func (eyes *Eyes) writeJSON(output []byte) error {
@@ -164,23 +193,18 @@ func (eyes *Eyes) writeJSON(output []byte) error {
 	return nil
 }
 
-func (eyes *Eyes) getOutput() ([]byte, error) {
-	var wOutput WaybarOutput
+func (eyes *Eyes) getOutput() {
 
-	wOutput.Class = "normal"
+	var output WaybarOutput
+	output.Class = "normal"
 	if eyes.Count == MaxEyes {
-		wOutput.Class = "critical"
+		output.Class = "critical"
 	}
-	wOutput.Text = strings.Repeat(EYE, eyes.Count)
-	wOutput.Tooltip = ""
-	wOutput.Count = eyes.Count
+	output.Text = strings.Repeat(EYE, eyes.Count)
+	output.Tooltip = ""
+	output.Count = eyes.Count
 
-	jsonOutput, err := json.Marshal(wOutput)
-	if err != nil {
-		return nil, err
-	}
-
-	return jsonOutput, nil
+	eyes.WOuput = output
 }
 
 func (eyes *Eyes) reset() {
@@ -196,11 +220,17 @@ func (eyes *Eyes) signalHandler(debug bool) {
 		sig := <-sigs
 		if sig == syscall.SIGUSR1 {
 			eyes.reset()
-			output, _ := eyes.getOutput()
-			if debug {
-				fmt.Println(string(output))
+			eyes.getOutput()
+
+			jsonOutput, err := json.Marshal(eyes.WOuput)
+			if err != nil {
+				continue
 			}
-			eyes.writeJSON(output)
+
+			if debug {
+				fmt.Println(string(jsonOutput))
+			}
+			eyes.writeJSON(jsonOutput)
 		} else {
 			os.Exit(0)
 		}
