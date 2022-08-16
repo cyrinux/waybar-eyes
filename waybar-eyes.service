@@ -1,0 +1,11 @@
+[Unit]
+Description=Eyes detection for waybar-eyes
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/usr/bin/waybar-eyes 2
+Restart=on-failure
+
+[Install]
+WantedBy=graphical-session.target
