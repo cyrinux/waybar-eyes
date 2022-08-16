@@ -82,7 +82,7 @@ dist: clean vendor build
 	(cd "$(TMP)" && tar -cvzf "$(BIN)-$(VERSION)-src.tar.gz" "$(BIN)-$(VERSION)")
 
 	mkdir "$(TMP)/$(BIN)-$(VERSION)-linux64"
-	cp LICENSE.md README.md example/style.css "$(TMP)/$(BIN)-$(VERSION)-linux64"
+	cp LICENSE.md README.md example/style.css haarcascade_frontalface_default.xml "$(TMP)/$(BIN)-$(VERSION)-linux64"
 	(cd "$(TMP)" && tar -cvzf "$(BIN)-$(VERSION)-linux64.tar.gz" "$(BIN)-$(VERSION)-linux64")
 
 	mkdir -p dist
@@ -100,4 +100,5 @@ dist: clean vendor build
 install:
 	install -Dm755 -t "$(BIN_DIR)/" $(BIN)
 	install -Dm644 -t "$(SHARE_DIR)/licenses/$(BIN)/" LICENSE.md
+	install -Dm644 -t "$(SHARE_DIR)/waybar-eyes/" haarcascade_frontalface_default.xml
 	install -Dm644 -t "$(SHARE_DIR)/doc/$(BIN)/" README.md example/style.css

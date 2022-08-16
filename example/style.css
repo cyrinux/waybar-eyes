@@ -1,0 +1,12 @@
+#waybar-eyes.warning {
+  border-bottom: 3px solid @yellow;
+}
+#waybar-eyes.critical {
+  border-bottom: 3px solid @red;
+}
+#waybar-eyes.ok {
+  border-bottom: 3px solid @green;
+}
+#waybar-eyes.pause {
+  border-bottom: 3px solid @purple;
+}
