@@ -23,6 +23,7 @@ type Eyes struct {
 	Tooltip string `json:"tooltip"`
 	Class   string `json:"class"`
 	Count   int    `json:"count"`
+	Faces   int    `json:"faces"`
 	Debug   bool   `json:"-"`
 }
 
@@ -31,6 +32,8 @@ func New(debug bool) Eyes {
 	return Eyes{Debug: debug}
 }
 
+// PrepareWaybarOutput prepare the class and text
+// for waybar output
 func (eyes *Eyes) PrepareWaybarOutput() {
 	eyes.Class = "ok"
 	if eyes.Count == MaxEyes {
@@ -40,6 +43,7 @@ func (eyes *Eyes) PrepareWaybarOutput() {
 	eyes.Tooltip = ""
 }
 
+// GetJSONOutput return the waybar json struct
 func (eyes *Eyes) GetJSONOutput() []byte {
 	jsonOutput, err := json.Marshal(eyes)
 	if err != nil {
@@ -54,6 +58,8 @@ func (eyes *Eyes) GetJSONOutput() []byte {
 	return jsonOutput
 }
 
+// SignalHandler manage signal
+// SIGUSR1 for Reset()
 func (eyes *Eyes) SignalHandler() {
 	// channel to trap signal
 	sigs := make(chan os.Signal, 1)
@@ -72,10 +78,12 @@ func (eyes *Eyes) SignalHandler() {
 	}
 }
 
+// Reset reset the eyes counter
 func (eyes *Eyes) Reset() {
 	eyes.Count = 0
 }
 
+// WriteJSONOutput write the output as file
 func (eyes *Eyes) WriteJSONOutput(output []byte) error {
 	cacheDir := os.Getenv("XDG_CACHE_HOME")
 	if cacheDir == "" {

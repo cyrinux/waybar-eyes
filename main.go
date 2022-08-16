@@ -35,15 +35,15 @@ func main() {
 		return
 	}
 
-	boot := true
-
 	// get debug mode
 	debug, _ := strconv.ParseBool(os.Getenv("DEBUG"))
+
+	boot := !debug
 
 	// parse args
 	// deviceID is my infrared built-in webcam
 	deviceID := 0
-	if len(os.Args) == 2 {
+	if len(os.Args) >= 2 {
 		deviceID, _ = strconv.Atoi(os.Args[1])
 	}
 
@@ -71,7 +71,8 @@ func main() {
 		}
 
 		// increase based on face detected or not
-		detected := detectFaceRepeat(deviceID, XMLFile, 10, debug)
+		faces, detected := detectFaceRepeat(deviceID, XMLFile, 10, debug)
+		e.Faces = faces
 		if detected && e.Count < eyes.MaxEyes && time.Since(lastEyeTS) > NewEyeTimeRate {
 			e.Count++
 			// keep timestamp of the last eye added
@@ -104,22 +105,22 @@ func main() {
 	}
 }
 
-func detectFaceRepeat(deviceID int, xmlFile string, repeat int, debug bool) bool {
+func detectFaceRepeat(deviceID int, xmlFile string, repeat int, debug bool) (int, bool) {
 	for i := 1; i <= repeat; i++ {
-		if detectFace(deviceID, xmlFile, debug) {
-			return true
+		if faces, detected := detectFace(deviceID, xmlFile, debug); detected {
+			return faces, true
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	return false
+	return 0, false
 }
 
-func detectFace(deviceID int, xmlFile string, debug bool) bool {
+func detectFace(deviceID int, xmlFile string, debug bool) (int, bool) {
 	// open webcam
 	webcam, err := gocv.VideoCaptureDevice(int(deviceID))
 	if err != nil {
 		fmt.Println(err)
-		return false
+		return 0, false
 	}
 	defer webcam.Close()
 
@@ -132,25 +133,22 @@ func detectFace(deviceID int, xmlFile string, debug bool) bool {
 	defer classifier.Close()
 	if !classifier.Load(xmlFile) {
 		fmt.Printf("Error reading cascade file: %v\n", xmlFile)
-		return false
+		return 0, false
 	}
 
 	if ok := webcam.Read(&img); !ok {
 		fmt.Printf("cannot read device %d\n", deviceID)
-		return false
+		return 0, false
 	}
 
 	if img.Empty() {
 		fmt.Printf("img empty %d\n", deviceID)
-		return false
+		return 0, false
 	}
 
 	// detect faces
 	rects := classifier.DetectMultiScale(img)
-	if debug {
-		fmt.Printf("found %d faces\n", len(rects))
-	}
 
-	return len(rects) > 0
+	return len(rects), len(rects) > 0
 
 }
