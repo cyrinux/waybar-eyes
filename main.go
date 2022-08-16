@@ -203,7 +203,7 @@ func writeJSON(output []byte) error {
 
 func (eyes *Eyes) getOutput() WaybarOutput {
 	var output WaybarOutput
-	output.Class = "normal"
+	output.Class = "ok"
 	if eyes.Count == MaxEyes {
 		output.Class = "critical"
 	}
