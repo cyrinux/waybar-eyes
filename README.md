@@ -10,3 +10,34 @@ This eyes number in the bar will decrease if you take a pause.
 
 - golang >= 1.18
 - opencv4
+- qt5-base
+
+## Build
+
+```shell
+make
+```
+
+## Waybar config
+
+```json
+...
+"modules-right": [
+  "custom/eyes",
+],
+...
+"custom/eyes": {
+    "exec": "cat ~/.cache/waybar-eyes.json",
+    "interval": 5,
+    "return-type": "json",
+    "on-click": "pkill -f -SIGUSR1 waybar-eyes",
+},
+...
+```
+
+## Resources
+
+You can test differents detection models from here
+
+- https://github.com/opencv/opencv/tree/master/data/haarcascades
+- https://github.com/kipr/opencv/tree/master/data/haarcascades
