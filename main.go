@@ -1,15 +1,4 @@
 // waybar-eyes based on face detection
-// waybar config:
-// ```
-//
-//	 "custom/eyes": {
-//	  "exec": "cat ~/.cache/waybar-eyes.json",
-//	  "interval": 5,
-//	  "return-type": "json",
-//	  "on-click": "pkill -f -SIGUSR1 waybar-eyes",
-//	},
-//
-// ```
 package main
 
 import (
@@ -27,10 +16,21 @@ import (
 
 // MaxEyes is the max number of eyes allowed
 // in the waybar applet
-const SleepTimeOnPresence = 60 * time.Second
-const SleepTimeOnAbsence = 30 * time.Second
-const NewEyeTimeRate = 15 * time.Minute
 const MaxEyes = 5
+
+// SleepTimeOnPresence is the sleep time
+// when a face is detected
+const SleepTimeOnPresence = 60 * time.Second
+
+// SleepTimeOnAbsence is the sleep time
+// when no face is detected
+const SleepTimeOnAbsence = 30 * time.Second
+
+// NewEyeTimeRate is the time rate required
+// to add a new eye in the output
+const NewEyeTimeRate = 15 * time.Minute
+
+// EYE is a unicode eye
 const EYE = ""
 
 // Version give the software version
@@ -52,7 +52,7 @@ type WaybarOutput struct {
 
 func main() {
 	if len(os.Args) > 3 {
-		fmt.Println("How to run:\n\tfacedetect [camera ID] [classifier XML file]")
+		fmt.Println("How to run:\n\t" + os.Args[0] + " [camera ID] [classifier XML file]")
 		return
 	}
 
@@ -119,7 +119,7 @@ func main() {
 
 		// write the output in JSON cache file
 		if eyes.WOuput != previousOutput {
-			eyes.writeJSON(jsonOutput)
+			writeJSON(jsonOutput)
 		}
 		previousOutput = eyes.WOuput
 
@@ -186,8 +186,12 @@ func detectFace5x(deviceID int, xmlFile string, debug bool) bool {
 	return false
 }
 
-func (eyes *Eyes) writeJSON(output []byte) error {
-	f, err := os.Create(os.Getenv("XDG_CACHE_HOME") + "/waybar-eyes.json")
+func writeJSON(output []byte) error {
+	cacheDir := os.Getenv("XDG_CACHE_HOME")
+	if cacheDir == "" {
+		cacheDir = os.Getenv("HOME") + "/.cache"
+	}
+	f, err := os.Create(cacheDir + "/waybar-eyes.json")
 	if err != nil {
 		return err
 	}
@@ -197,8 +201,7 @@ func (eyes *Eyes) writeJSON(output []byte) error {
 	return nil
 }
 
-func (eyes *Eyes) getOutput() {
-
+func (eyes *Eyes) getOutput() WaybarOutput {
 	var output WaybarOutput
 	output.Class = "normal"
 	if eyes.Count == MaxEyes {
@@ -209,6 +212,8 @@ func (eyes *Eyes) getOutput() {
 	output.Count = eyes.Count
 
 	eyes.WOuput = output
+
+	return output
 }
 
 func (eyes *Eyes) reset() {
@@ -230,11 +235,10 @@ func (eyes *Eyes) signalHandler(debug bool) {
 			if err != nil {
 				continue
 			}
-
 			if debug {
 				fmt.Println(string(jsonOutput))
 			}
-			eyes.writeJSON(jsonOutput)
+			writeJSON(jsonOutput)
 		} else {
 			os.Exit(0)
 		}
