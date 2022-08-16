@@ -27,9 +27,9 @@ import (
 
 // MaxEyes is the max number of eyes allowed
 // in the waybar applet
-const SleepTimeOnPresence = 3 * time.Second
-const SleepTimeOnAbsence = 1 * time.Second
-const NewEyeTimeRate = 10 * time.Second
+const SleepTimeOnPresence = 60 * time.Second
+const SleepTimeOnAbsence = 30 * time.Second
+const NewEyeTimeRate = 15 * time.Minute
 const MaxEyes = 5
 const EYE = ""
 
@@ -79,24 +79,28 @@ func main() {
 
 	// main loop here
 	var eyes Eyes
+
+	// handle SIGUSR1 to reset count
 	go eyes.signalHandler(debug)
 
 	lastEyeTS := time.Now()
 	for {
-		// increase or decrease eye counter
-		// based on face detected or not
+		// prevent poll on boot
 		if boot {
 			boot = false
+			time.Sleep(SleepTimeOnPresence)
+			continue
 		}
 
+		// increase based on face detected or not
 		detected := detectFace5x(deviceID, xmlFile, debug)
-
-		if detected && eyes.Count < MaxEyes {
-			if time.Since(lastEyeTS) > NewEyeTimeRate {
-				eyes.Count++
-				lastEyeTS = time.Now()
-			}
+		if detected && eyes.Count < MaxEyes && time.Since(lastEyeTS) > NewEyeTimeRate {
+			eyes.Count++
+			// keep timestamp of the last eye added
+			lastEyeTS = time.Now()
 		} else if !detected && eyes.Count > 0 {
+			// decrease if no face detected
+			// and count > 0
 			eyes.Count--
 		}
 
