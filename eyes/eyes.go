@@ -11,7 +11,7 @@ import (
 )
 
 // EYE is a unicode eye
-const EYE = ""
+const EYE = "" // U+f06e
 
 // MaxEyes is the max number of eyes allowed
 // in the waybar applet
