@@ -82,7 +82,7 @@ dist: clean vendor build
 	(cd "$(TMP)" && tar -cvzf "$(BIN)-$(VERSION)-src.tar.gz" "$(BIN)-$(VERSION)")
 
 	mkdir "$(TMP)/$(BIN)-$(VERSION)-linux64"
-	cp -r LICENSE.md README.md example models waybar-eyes.service "$(TMP)/$(BIN)-$(VERSION)-linux64"
+	cp -r LICENSE.md README.md example models $(BIN).service "$(TMP)/$(BIN)-$(VERSION)-linux64"
 	(cd "$(TMP)" && tar -cvzf "$(BIN)-$(VERSION)-linux64.tar.gz" "$(BIN)-$(VERSION)-linux64")
 
 	mkdir -p dist
@@ -99,8 +99,8 @@ dist: clean vendor build
 .PHONY: install
 install:
 	install -Dm755 -t "$(BIN_DIR)/" $(BIN)
-	install -Dm644 -t "$(SHARE_DIR)/waybar-eyes/models" models/haarcascade_frontalface_default.xml
-	install -Dm644 -t "$(LIB_DIR)/systemd/user/" waybar-eyes.service
+	install -Dm644 -t "$(SHARE_DIR)/$(BIN)/models" models/haarcascade_frontalface_default.xml
+	install -Dm644 -t "$(LIB_DIR)/systemd/user/" $(BIN).service
 	install -Dm644 -t "$(SHARE_DIR)/licenses/$(BIN)/" LICENSE.md
 	install -Dm644 -t "$(SHARE_DIR)/doc/$(BIN)/" README.md
 	install -Dm644 -t "$(SHARE_DIR)/doc/$(BIN)/example" example/style.css
