@@ -63,7 +63,7 @@ func main() {
 
 	// parse args
 	// deviceID is my infrared built-in webcam
-	deviceID := 2
+	deviceID := 0
 	if len(os.Args) == 2 {
 		deviceID, _ = strconv.Atoi(os.Args[1])
 	}
