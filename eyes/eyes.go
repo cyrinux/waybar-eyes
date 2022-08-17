@@ -36,7 +36,7 @@ func New(debug bool) Eyes {
 // for waybar output
 func (eyes *Eyes) PrepareWaybarOutput() {
 	eyes.Class = "ok"
-	if eyes.Count == MaxEyes {
+	if eyes.Count >= MaxEyes {
 		eyes.Class = "critical"
 	}
 	eyes.Text = strings.Repeat(EYE, eyes.Count)
