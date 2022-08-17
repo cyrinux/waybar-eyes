@@ -1,5 +1,7 @@
 # waybar-eyes
 
+[![Go](https://github.com/cyrinux/waybar-eyes/actions/workflows/go.yml/badge.svg)](https://github.com/cyrinux/waybar-eyes/actions/workflows/go.yml)
+
 This is a waybar applet to help you keeping your eyes.
 
 This will try to detect your face and indicate you in waybar if you are stuck to your screen for too much time.
