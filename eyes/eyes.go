@@ -40,7 +40,11 @@ func (eyes *Eyes) PrepareWaybarOutput() {
 		eyes.Class = "critical"
 	}
 	eyes.Text = strings.Repeat(EYE, eyes.Count)
-	eyes.Tooltip = ""
+	if eyes.Faces > 0 {
+		eyes.Tooltip = fmt.Sprintf("%d faces detected", eyes.Faces)
+	} else {
+		eyes.Tooltip = ""
+	}
 }
 
 // GetJSONOutput return the waybar json struct
