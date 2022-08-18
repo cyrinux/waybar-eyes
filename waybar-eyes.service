@@ -4,7 +4,7 @@ PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
-ExecStart=/usr/bin/waybar-eyes 0 /usr/share/waybar-eyes/models/haarcascade_frontalface_default.xml
+ExecStart=/usr/bin/waybar-eyes -d 0 -m /usr/share/waybar-eyes/models/haarcascade_frontalface_default.xml
 Restart=on-failure
 
 [Install]

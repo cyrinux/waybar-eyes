@@ -4,7 +4,7 @@
 
 This is a waybar applet to help you keeping your eyes.
 
-This will try to detect your face and indicate you in waybar if you are stuck to your screen for too much time.
+This will try to detect your face and indicate you in waybar if you are stuck to your screen since too long time.
 This add a new eye in the bar every 15 minutes if a face is detected.
 This eyes number in the bar will decrease if you take a pause.
 
@@ -19,6 +19,11 @@ This eyes number in the bar will decrease if you take a pause.
 ```shell
 make
 ```
+
+## Config and run
+
+Default value should be nice one. But if you want to configure it, you can run `waybar-eyes -h` to see the params,
+and maybe use a systemd unit override.
 
 ## Waybar config
 
@@ -35,6 +40,12 @@ make
     "on-click": "pkill -f -SIGUSR1 waybar-eyes",
 },
 ...
+```
+
+## Debug
+
+```shell
+DEBUG=1 waybar-eyes
 ```
 
 ## Resources

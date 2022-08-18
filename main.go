@@ -2,6 +2,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"strconv"
@@ -29,34 +30,35 @@ var Version string
 // XMLFile is the detection model use
 var XMLFile = "haarcascade_frontalface_default.xml"
 
+type Config struct {
+	Debug  bool
+	Device int
+	Model  string
+}
+
 func main() {
-	if len(os.Args) > 3 {
-		fmt.Println("How to run:\n\t" + os.Args[0] + " [camera ID] [classifier XML file]")
-		return
-	}
+	// config app
+	config := Config{Debug: false, Device: 0, Model: XMLFile}
+	flag.BoolVar(&config.Debug, "debug", config.Debug, "Debug mode")
+	flag.IntVar(&config.Device, "d", config.Device, "Video device id, default: 0.")
+	flag.StringVar(&config.Model, "m", config.Model, "Detection model path")
+	flag.Parse()
 
 	// get debug mode
-	debug, _ := strconv.ParseBool(os.Getenv("DEBUG"))
-
-	boot := !debug
-
-	// parse args
-	// deviceID is my infrared built-in webcam
-	deviceID := 0
-	if len(os.Args) >= 2 {
-		deviceID, _ = strconv.Atoi(os.Args[1])
+	envDebug, _ := strconv.ParseBool(os.Getenv("DEBUG"))
+	if envDebug {
+		config.Debug = envDebug
 	}
 
-	// face model is the gocv default model example
-	if len(os.Args) == 3 {
-		XMLFile = os.Args[2]
-	}
+	// If the app boot, we will skip the first loop
+	// but if in debug, we will probe directly
+	boot := !config.Debug
 
 	// init waybar output
 	var previousEyes eyes.Eyes
 
 	// main loop here
-	e := eyes.New(debug)
+	e := eyes.New(config.Debug)
 
 	// handle SIGUSR1 to reset count
 	go e.SignalHandler()
@@ -71,7 +73,7 @@ func main() {
 		}
 
 		// increase based on face detected or not
-		faces, detected := detectFaceRepeat(deviceID, XMLFile, 10, debug)
+		faces, detected := detectFaceRepeat(config.Device, config.Model, 10, config.Debug)
 		e.Faces = faces
 		if detected && e.Count < eyes.MaxEyes && time.Since(lastEyeTS) > NewEyeTimeRate {
 			e.Count++
@@ -105,6 +107,7 @@ func main() {
 	}
 }
 
+// detectFaceRepeat try to detect a face several times
 func detectFaceRepeat(deviceID int, xmlFile string, repeat int, debug bool) (int, bool) {
 	for i := 1; i <= repeat; i++ {
 		if faces, detected := detectFace(deviceID, xmlFile, debug); detected {
@@ -115,6 +118,7 @@ func detectFaceRepeat(deviceID int, xmlFile string, repeat int, debug bool) (int
 	return 0, false
 }
 
+// detectFace try to detect a face
 func detectFace(deviceID int, xmlFile string, debug bool) (int, bool) {
 	// open webcam
 	webcam, err := gocv.VideoCaptureDevice(int(deviceID))
