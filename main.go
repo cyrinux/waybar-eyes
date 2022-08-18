@@ -4,6 +4,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"image"
+	"image/color"
 	"os"
 	"strconv"
 	"time"
@@ -120,6 +122,14 @@ func detectFaceRepeat(deviceID int, xmlFile string, repeat int, debug bool) (int
 
 // detectFace try to detect a face
 func detectFace(deviceID int, xmlFile string, debug bool) (int, bool) {
+
+	// debug
+	window := gocv.NewWindow("Detect faces")
+	defer window.Close()
+
+	// color for the rect when faces detected
+	blue := color.RGBA{0, 0, 255, 0}
+
 	// open webcam
 	webcam, err := gocv.VideoCaptureDevice(int(deviceID))
 	if err != nil {
@@ -152,6 +162,22 @@ func detectFace(deviceID int, xmlFile string, debug bool) (int, bool) {
 
 	// detect faces
 	rects := classifier.DetectMultiScale(img)
+
+	if debug {
+		// draw a rectangle around each face on the original image,
+		// along with text identifying as "Human"
+		for _, r := range rects {
+			gocv.Rectangle(&img, r, blue, 3)
+
+			size := gocv.GetTextSize("Human", gocv.FontHersheyPlain, 1.2, 2)
+			pt := image.Pt(r.Min.X+(r.Min.X/2)-(size.X/2), r.Min.Y-2)
+			gocv.PutText(&img, "Human", pt, gocv.FontHersheyPlain, 1.2, blue, 2)
+		}
+
+		// show the image in the window, and wait 1 millisecond
+		window.IMShow(img)
+		window.WaitKey(500)
+	}
 
 	return len(rects), len(rects) > 0
 

@@ -99,7 +99,7 @@ dist: clean vendor build
 .PHONY: install
 install:
 	install -Dm755 -t "$(BIN_DIR)/" $(BIN)
-	install -Dm644 -t "$(SHARE_DIR)/$(BIN)/models" models/haarcascade_frontalface_default.xml
+	install -Dm644 -t "$(SHARE_DIR)/$(BIN)/models" models/*.xml
 	install -Dm644 -t "$(LIB_DIR)/systemd/user/" $(BIN).service
 	install -Dm644 -t "$(SHARE_DIR)/licenses/$(BIN)/" LICENSE.md
 	install -Dm644 -t "$(SHARE_DIR)/doc/$(BIN)/" README.md
