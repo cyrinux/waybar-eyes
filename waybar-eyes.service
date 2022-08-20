@@ -1,10 +1,11 @@
 [Unit]
-Description=Eyes detection for waybar-eyes
+Description=Eyes detection for waybar
 PartOf=graphical-session.target
 After=graphical-session.target
 
 [Service]
 ExecStart=/usr/bin/waybar-eyes -d 0 -m /usr/share/waybar-eyes/models/haarcascade_frontalface_default.xml
+PrivateNetwork=yes
 Restart=on-failure
 
 [Install]

@@ -131,10 +131,11 @@ func detectFace(deviceID int, xmlFile string, retryTime int, debug bool) (int, b
 		fmt.Printf("Error reading cascade file: %v\n", xmlFile)
 		return 0, false
 	}
-
+	// window to show detected face
 	window := gocv.NewWindow("Detect faces")
 	defer window.Close()
 
+	// loop to detect faces, we loop retryTime time
 	for range make([]int, retryTime) {
 		if ok := webcam.Read(&img); !ok {
 			fmt.Printf("cannot read device %d\n", deviceID)
