@@ -139,11 +139,12 @@ func detectFace(deviceID int, xmlFile string, retryTime int, debug bool) (int, b
 	for range make([]int, retryTime) {
 		if ok := webcam.Read(&img); !ok {
 			fmt.Printf("cannot read device %d\n", deviceID)
-			continue
+			break
 		}
 
 		if img.Empty() {
 			fmt.Printf("img empty %d\n", deviceID)
+			time.Sleep(1000 * time.Millisecond)
 			continue
 		}
 
