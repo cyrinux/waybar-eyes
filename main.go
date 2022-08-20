@@ -32,6 +32,7 @@ var Version string
 // XMLFile is the detection model use
 var XMLFile = "haarcascade_frontalface_default.xml"
 
+// Config is config struct
 type Config struct {
 	Debug  bool
 	Device int
@@ -39,7 +40,7 @@ type Config struct {
 }
 
 func main() {
-	// config app
+	// parse params
 	config := Config{Debug: false, Device: 0, Model: XMLFile}
 	flag.BoolVar(&config.Debug, "debug", config.Debug, "Debug mode")
 	flag.IntVar(&config.Device, "d", config.Device, "Video device id, default: 0.")
@@ -75,7 +76,7 @@ func main() {
 		}
 
 		// increase based on face detected or not
-		faces, detected := detectFaceRepeat(config.Device, config.Model, 10, config.Debug)
+		faces, detected := detectFace(config.Device, config.Model, 10, config.Debug)
 		e.Faces = faces
 		if detected && e.Count < eyes.MaxEyes && time.Since(lastEyeTS) > NewEyeTimeRate {
 			e.Count++
@@ -109,27 +110,8 @@ func main() {
 	}
 }
 
-// detectFaceRepeat try to detect a face several times
-func detectFaceRepeat(deviceID int, xmlFile string, repeat int, debug bool) (int, bool) {
-	for i := 1; i <= repeat; i++ {
-		if faces, detected := detectFace(deviceID, xmlFile, debug); detected {
-			return faces, true
-		}
-		time.Sleep(500 * time.Millisecond)
-	}
-	return 0, false
-}
-
 // detectFace try to detect a face
-func detectFace(deviceID int, xmlFile string, debug bool) (int, bool) {
-
-	// debug
-	window := gocv.NewWindow("Detect faces")
-	defer window.Close()
-
-	// color for the rect when faces detected
-	blue := color.RGBA{0, 0, 255, 0}
-
+func detectFace(deviceID int, xmlFile string, retryTime int, debug bool) (int, bool) {
 	// open webcam
 	webcam, err := gocv.VideoCaptureDevice(int(deviceID))
 	if err != nil {
@@ -150,35 +132,46 @@ func detectFace(deviceID int, xmlFile string, debug bool) (int, bool) {
 		return 0, false
 	}
 
-	if ok := webcam.Read(&img); !ok {
-		fmt.Printf("cannot read device %d\n", deviceID)
-		return 0, false
-	}
+	window := gocv.NewWindow("Detect faces")
+	defer window.Close()
 
-	if img.Empty() {
-		fmt.Printf("img empty %d\n", deviceID)
-		return 0, false
-	}
-
-	// detect faces
-	rects := classifier.DetectMultiScale(img)
-
-	if debug {
-		// draw a rectangle around each face on the original image,
-		// along with text identifying as "Human"
-		for _, r := range rects {
-			gocv.Rectangle(&img, r, blue, 3)
-
-			size := gocv.GetTextSize("Human", gocv.FontHersheyPlain, 1.2, 2)
-			pt := image.Pt(r.Min.X+(r.Min.X/2)-(size.X/2), r.Min.Y-2)
-			gocv.PutText(&img, "Human", pt, gocv.FontHersheyPlain, 1.2, blue, 2)
+	for range make([]int, retryTime) {
+		if ok := webcam.Read(&img); !ok {
+			fmt.Printf("cannot read device %d\n", deviceID)
+			continue
 		}
 
-		// show the image in the window, and wait 1 millisecond
-		window.IMShow(img)
-		window.WaitKey(500)
+		if img.Empty() {
+			fmt.Printf("img empty %d\n", deviceID)
+			continue
+		}
+
+		// detect faces
+		rects := classifier.DetectMultiScale(img)
+
+		// display face detection result for debugging
+		if debug {
+			// color for the rect when faces detected
+			blue := color.RGBA{0, 0, 255, 0}
+			// draw a rectangle around each face on the original image,
+			// along with text identifying as "Human"
+			for _, r := range rects {
+				gocv.Rectangle(&img, r, blue, 3)
+				size := gocv.GetTextSize("Face", gocv.FontHersheyPlain, 1.2, 2)
+				pt := image.Pt(r.Min.X+(r.Min.X/2)-(size.X/2), r.Min.Y-2)
+				gocv.PutText(&img, "Face", pt, gocv.FontHersheyPlain, 1.2, blue, 2)
+			}
+			// show the image in the window, and wait 1 millisecond
+			window.IMShow(img)
+			window.WaitKey(500)
+		}
+
+		if len(rects) > 0 {
+			return len(rects), len(rects) > 0
+		}
+
+		time.Sleep(500 * time.Millisecond)
 	}
 
-	return len(rects), len(rects) > 0
-
+	return 0, false
 }
