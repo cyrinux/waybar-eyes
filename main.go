@@ -34,14 +34,16 @@ var XMLFile = "haarcascade_frontalface_default.xml"
 
 // Config is config struct
 type Config struct {
-	Debug  bool
-	Device int
-	Model  string
+	Debug   bool
+	Display bool
+	Device  int
+	Model   string
 }
 
 func main() {
 	// parse params
-	config := Config{Debug: false, Device: 0, Model: XMLFile}
+	config := Config{Debug: false, Display: false, Device: 0, Model: XMLFile}
+	flag.BoolVar(&config.Display, "display", config.Display, "Display mode")
 	flag.BoolVar(&config.Debug, "debug", config.Debug, "Debug mode")
 	flag.IntVar(&config.Device, "d", config.Device, "Video device id, default: 0.")
 	flag.StringVar(&config.Model, "m", config.Model, "Detection model path")
@@ -76,7 +78,7 @@ func main() {
 		}
 
 		// increase based on face detected or not
-		faces, detected := detectFace(config.Device, config.Model, 10, config.Debug)
+		faces, detected := detectFace(config.Device, config.Model, 10, config.Debug, config.Display)
 		e.Faces = faces
 		if detected && e.Count < eyes.MaxEyes && time.Since(lastEyeTS) > NewEyeTimeRate {
 			e.Count++
@@ -111,11 +113,12 @@ func main() {
 }
 
 // detectFace try to detect a face
-func detectFace(deviceID int, xmlFile string, retryTime int, debug bool) (int, bool) {
+func detectFace(deviceID int, xmlFile string, retryTime int, debug bool, display bool) (int, bool) {
 	// open webcam
 	webcam, err := gocv.VideoCaptureDevice(int(deviceID))
 	if err != nil {
 		fmt.Println(err)
+		webcam.Close()
 		return 0, false
 	}
 	defer webcam.Close()
@@ -136,7 +139,10 @@ func detectFace(deviceID int, xmlFile string, retryTime int, debug bool) (int, b
 	defer window.Close()
 
 	// loop to detect faces, we loop retryTime time
-	for range make([]int, retryTime) {
+	for i := range make([]int, retryTime) {
+		fmt.Println(i)
+		defer time.Sleep(500 * time.Millisecond)
+
 		if ok := webcam.Read(&img); !ok {
 			fmt.Printf("cannot read device %d\n", deviceID)
 			break
@@ -144,15 +150,14 @@ func detectFace(deviceID int, xmlFile string, retryTime int, debug bool) (int, b
 
 		if img.Empty() {
 			fmt.Printf("img empty %d\n", deviceID)
-			time.Sleep(1000 * time.Millisecond)
-			continue
+			break
 		}
 
 		// detect faces
 		rects := classifier.DetectMultiScale(img)
 
 		// display face detection result for debugging
-		if debug {
+		if debug && display {
 			// color for the rect when faces detected
 			blue := color.RGBA{0, 0, 255, 0}
 			// draw a rectangle around each face on the original image,
@@ -173,6 +178,7 @@ func detectFace(deviceID int, xmlFile string, retryTime int, debug bool) (int, b
 		}
 
 		time.Sleep(500 * time.Millisecond)
+
 	}
 
 	return 0, false
