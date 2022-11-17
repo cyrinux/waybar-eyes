@@ -78,7 +78,7 @@ func main() {
 		}
 
 		// increase based on face detected or not
-		faces, detected := detectFace(config.Device, config.Model, 10, config.Debug, config.Display)
+		faces, detected := detectFace(config.Device, config.Model, 2, config.Debug, config.Display)
 		e.Faces = faces
 		if detected && e.Count < eyes.MaxEyes && time.Since(lastEyeTS) > NewEyeTimeRate {
 			e.Count++
@@ -134,14 +134,10 @@ func detectFace(deviceID int, xmlFile string, retryTime int, debug bool, display
 		fmt.Printf("Error reading cascade file: %v\n", xmlFile)
 		return 0, false
 	}
-	// window to show detected face
-	window := gocv.NewWindow("Detect faces")
-	defer window.Close()
 
 	// loop to detect faces, we loop retryTime time
 	for i := range make([]int, retryTime) {
 		fmt.Println(i)
-		defer time.Sleep(500 * time.Millisecond)
 
 		if ok := webcam.Read(&img); !ok {
 			fmt.Printf("cannot read device %d\n", deviceID)
@@ -158,6 +154,10 @@ func detectFace(deviceID int, xmlFile string, retryTime int, debug bool, display
 
 		// display face detection result for debugging
 		if debug && display {
+			// window to show detected face
+			window := gocv.NewWindow("Detect faces")
+			defer window.Close()
+
 			// color for the rect when faces detected
 			blue := color.RGBA{0, 0, 255, 0}
 			// draw a rectangle around each face on the original image,
@@ -173,12 +173,11 @@ func detectFace(deviceID int, xmlFile string, retryTime int, debug bool, display
 			window.WaitKey(500)
 		}
 
+		time.Sleep(2000 * time.Millisecond)
+
 		if len(rects) > 0 {
 			return len(rects), len(rects) > 0
 		}
-
-		time.Sleep(500 * time.Millisecond)
-
 	}
 
 	return 0, false
