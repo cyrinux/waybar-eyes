@@ -136,9 +136,7 @@ func detectFace(deviceID int, xmlFile string, retryTime int, debug bool, display
 	}
 
 	// loop to detect faces, we loop retryTime time
-	for i := range make([]int, retryTime) {
-		fmt.Println(i)
-
+	for range make([]int, retryTime) {
 		if ok := webcam.Read(&img); !ok {
 			fmt.Printf("cannot read device %d\n", deviceID)
 			break
